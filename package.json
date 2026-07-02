@@ -1,0 +1,28 @@
+{
+  "name": "nusmods-mcp",
+  "version": "0.1.0",
+  "description": "Local MCP stdio server for querying NUSMods module and timetable data",
+  "type": "module",
+  "bin": {
+    "nusmods-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
