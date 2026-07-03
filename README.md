@@ -55,8 +55,9 @@ It requires a Disqus API key:
 1. Create an app at <https://disqus.com/api/applications/> to get an API key
    (only the public key is needed; no OAuth required for read-only access).
 2. Configure it:
-   - **stdio**: set the `DISQUS_API_KEY` environment variable before starting
-     the server.
+   - **stdio**: copy `.env.example` to `.env` in the project root and fill in
+     `DISQUS_API_KEY` (loaded automatically at startup), or set it as an
+     environment variable (env vars take precedence).
    - **Cloudflare Workers**: `npx wrangler secret put DISQUS_API_KEY`.
 
 Without a key configured, the tool returns a structured error explaining how
