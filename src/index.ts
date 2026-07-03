@@ -1,26 +1,15 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerSearchModules } from "./tools/searchModules.js";
-import { registerGetModuleInfo } from "./tools/getModuleInfo.js";
-import { registerGetModuleTimetable } from "./tools/getModuleTimetable.js";
-import { registerListAcademicCalendar } from "./tools/listAcademicCalendar.js";
-import { registerDecodeShareUrl } from "./tools/decodeShareUrl.js";
-import { registerEncodeShareUrl } from "./tools/encodeShareUrl.js";
-import { registerGetFacultySchedule } from "./tools/getFacultySchedule.js";
+import { registerAllTools } from "./registerTools.js";
 
 const server = new McpServer({
   name: "nusmods-mcp",
   version: "0.1.0",
 });
 
-registerSearchModules(server);
-registerGetModuleInfo(server);
-registerGetModuleTimetable(server);
-registerListAcademicCalendar(server);
-registerDecodeShareUrl(server);
-registerEncodeShareUrl(server);
-registerGetFacultySchedule(server);
+// The stdio entry keeps the default DiskCache backend (see cache.ts).
+registerAllTools(server);
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();

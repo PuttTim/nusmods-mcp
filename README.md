@@ -42,6 +42,39 @@ claude mcp add nusmods -- node /path/to/nusmods-mcp/dist/index.js
 }
 ```
 
+## Deploy to Cloudflare (remote server)
+
+The same 7 tools can also run as an authless remote MCP server on Cloudflare
+Workers (streamable HTTP at `/mcp`, SSE at `/sse`). The Worker entry is
+`src/worker.ts`; it shares all tool logic with the stdio server and only swaps
+the disk cache for a Workers KV cache.
+
+```sh
+npm install
+npx wrangler login                       # one-time auth
+
+# Create the KV namespace and paste the printed id into wrangler.jsonc,
+# replacing REPLACE_WITH_KV_NAMESPACE_ID:
+npx wrangler kv namespace create CACHE
+
+npm run deploy                           # wrangler deploy
+```
+
+Local development needs no auth or KV id — `wrangler dev` provisions a local KV
+store automatically:
+
+```sh
+npm run dev:worker                       # wrangler dev on http://127.0.0.1:8787
+```
+
+Connect a client to the deployed server (streamable HTTP):
+
+```sh
+claude mcp add --transport http nusmods https://<your-worker>.workers.dev/mcp
+```
+
+For clients that only speak SSE, use `https://<your-worker>.workers.dev/sse`.
+
 ## Configuration
 
 No config required. Optional:
@@ -49,7 +82,7 @@ No config required. Optional:
 - `NUSMODS_ACAD_YEAR` — override the auto-derived academic year (format `2025-2026`).
 - Academic year/semester default from the current date (Jul 1–Dec 15 → Sem 1; Dec 16–May 15 → Sem 2; mid-May–June requires an explicit `semester`). All tools accept explicit `acadYear`/`semester` params.
 
-API responses are cached on disk under `~/.cache/nusmods-mcp` (24h TTL; scraped pages 6h).
+API responses are cached on disk under `~/.cache/nusmods-mcp` (24h TTL; scraped pages 6h). The Cloudflare Worker uses the same TTLs backed by a Workers KV namespace (`CACHE`) instead of disk.
 
 ## Development
 

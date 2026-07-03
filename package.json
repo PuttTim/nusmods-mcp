@@ -12,16 +12,21 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "typecheck:worker": "tsc -p tsconfig.worker.json",
+    "dev:worker": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.0",
+    "agents": "^0.0.109",
     "cheerio": "^1.2.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "wrangler": "^4.107.0"
   },
   "engines": {
     "node": ">=18"

@@ -22,7 +22,7 @@ The server is **strictly data-only**: it fetches, decodes, and compacts data. Al
 
 - **No optimization/solver/validation on the server** — no clash checking, no gap/day metrics, no timetable generation. (Explicit decision; revisit if agent-side reasoning proves unreliable.)
 - **Module reviews** — the v2 API has no reviews endpoint; nusmods.com reviews live in Disqus. Out of scope; possible future work via alternative sources.
-- **Cloud deployment** — local only. Design shouldn't preclude it (keep transport pluggable), but no hosting, auth, or multi-tenancy work now.
+- ~~**Cloud deployment** — local only.~~ *(Superseded 2026-07-03: an authless Cloudflare Workers deployment target was added — streamable HTTP at `/mcp` via the `agents` McpAgent pattern, Workers KV cache, same shared tool logic as the stdio entry. Auth and multi-tenancy remain out of scope.)*
 - Writing back to NUSMods (creating/saving timetables on nusmods.com).
 - Faculties beyond Math and SoC (adapter design allows adding them later).
 
