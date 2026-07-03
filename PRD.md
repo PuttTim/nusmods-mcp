@@ -21,7 +21,7 @@ The server is **strictly data-only**: it fetches, decodes, and compacts data. Al
 ## 3. Non-goals (v1)
 
 - **No optimization/solver/validation on the server** — no clash checking, no gap/day metrics, no timetable generation. (Explicit decision; revisit if agent-side reasoning proves unreliable.)
-- **Module reviews** — the v2 API has no reviews endpoint; nusmods.com reviews live in Disqus. Out of scope; possible future work via alternative sources.
+- ~~**Module reviews** — the v2 API has no reviews endpoint; nusmods.com reviews live in Disqus. Out of scope; possible future work via alternative sources.~~ *(Superseded 2026-07-03: `get_module_reviews` added, reading directly from the official Disqus API (`threads/listPosts`) against the `nusmods-prod` forum, using a user-provided `DISQUS_API_KEY`.)*
 - ~~**Cloud deployment** — local only.~~ *(Superseded 2026-07-03: an authless Cloudflare Workers deployment target was added — streamable HTTP at `/mcp` via the `agents` McpAgent pattern, Workers KV cache, same shared tool logic as the stdio entry. Auth and multi-tenancy remain out of scope.)*
 - Writing back to NUSMods (creating/saving timetables on nusmods.com).
 - Faculties beyond Math and SoC (adapter design allows adding them later).
@@ -62,6 +62,7 @@ Single user (the developer) driving an AI agent locally.
 | `encode_share_url` | semester, selected lessons `{ moduleCode, lessonType, classNo }[]`, optional acadYear? | canonical `https://nusmods.com/timetable/sem-{n}/share?...` URL |
 | `get_faculty_schedule` | faculty (`math` \| `soc`), optional semester/module filter | normalized offering list scraped from the faculty page |
 | `list_academic_calendar` | acadYear? | semester date ranges (from NUSMods data), so the agent can map weeks to dates |
+| `get_module_reviews` | module code, limit? | community reviews from the module's NUSMods Disqus thread (author, date, likes/dislikes, text), via the official Disqus API and a user-provided key |
 
 Notes:
 - `decode_share_url` must handle the `?CS2103T=LEC:G12,TUT:04`-style query encoding and follow NUSMods short links.

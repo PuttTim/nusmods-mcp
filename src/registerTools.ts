@@ -7,6 +7,7 @@ import { registerListAcademicCalendar } from "./tools/listAcademicCalendar.js";
 import { registerDecodeShareUrl } from "./tools/decodeShareUrl.js";
 import { registerEncodeShareUrl } from "./tools/encodeShareUrl.js";
 import { registerGetFacultySchedule } from "./tools/getFacultySchedule.js";
+import { registerGetModuleReviews } from "./tools/getModuleReviews.js";
 
 /** Register the full v1 tool surface on a server. Shared by both entrypoints. */
 export function registerAllTools(server: McpServer): void {
@@ -18,4 +19,5 @@ export function registerAllTools(server: McpServer): void {
   registerDecodeShareUrl(server);
   registerEncodeShareUrl(server);
   registerGetFacultySchedule(server);
+  registerGetModuleReviews(server);
 }

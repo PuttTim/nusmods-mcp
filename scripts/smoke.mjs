@@ -19,6 +19,7 @@ const calls = [
   ["encode_share_url", { semester: 1, selections: [{ moduleCode: "CS2103T", lessonType: "Lecture", classNo: "G12" }, { moduleCode: "MA2104", lessonType: "TUT", classNo: "1" }] }],
   ["get_faculty_schedule", { faculty: "soc", moduleCode: "CS2103T" }],
   ["get_faculty_schedule", { faculty: "math" }],
+  ["get_module_reviews", { moduleCode: "CS2103T" }],
 ];
 for (const [name, args] of calls) {
   const r = await client.callTool({ name, arguments: args });

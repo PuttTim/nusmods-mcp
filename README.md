@@ -15,6 +15,7 @@ The server is **strictly data-only**: it fetches, decodes, and compacts data fro
 | `encode_share_url` | Build a canonical NUSMods share URL from selected lessons |
 | `get_faculty_schedule` | Scraped course schedules: SoC (works) and Math (bot-protected; soft-fails with a hint) |
 | `list_academic_calendar` | Approximate week → date-range mapping per semester |
+| `get_module_reviews` | Community reviews for a module from the NUSMods Disqus thread |
 
 ## Setup
 
@@ -42,9 +43,28 @@ claude mcp add nusmods -- node /path/to/nusmods-mcp/dist/index.js
 }
 ```
 
+## Reviews
+
+`get_module_reviews` reads the community comments posted on a module's NUSMods
+reviews page (e.g. `https://nusmods.com/courses/CS2103T/reviews`), which are
+hosted on Disqus (forum `nusmods-prod`, thread ident = module code). These are
+public forum comments, not curated or verified content.
+
+It requires a Disqus API key:
+
+1. Create an app at <https://disqus.com/api/applications/> to get an API key
+   (only the public key is needed; no OAuth required for read-only access).
+2. Configure it:
+   - **stdio**: set the `DISQUS_API_KEY` environment variable before starting
+     the server.
+   - **Cloudflare Workers**: `npx wrangler secret put DISQUS_API_KEY`.
+
+Without a key configured, the tool returns a structured error explaining how
+to set one up instead of failing silently.
+
 ## Deploy to Cloudflare (remote server)
 
-The same 7 tools can also run as an authless remote MCP server on Cloudflare
+The same 8 tools can also run as an authless remote MCP server on Cloudflare
 Workers (streamable HTTP at `/mcp`, SSE at `/sse`). The Worker entry is
 `src/worker.ts`; it shares all tool logic with the stdio server and only swaps
 the disk cache for a Workers KV cache.

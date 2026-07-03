@@ -3,15 +3,17 @@ import { McpAgent } from "agents/mcp"
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { registerAllTools } from "./registerTools.js"
 import { setCache, KvCacheStore } from "./cache.js"
+import { setDisqusApiKey } from "./disqus.js"
 
 interface Env {
 	NUSMODS_CACHE: KVNamespace
 	MCP_OBJECT: DurableObjectNamespace
+	DISQUS_API_KEY?: string
 }
 
 /**
  * Authless remote MCP server for Cloudflare Workers. Uses the `agents`
- * package's McpAgent (a Durable Object) to serve the same 7 tools as the
+ * package's McpAgent (a Durable Object) to serve the same 8 tools as the
  * stdio entry over streamable HTTP (/mcp) and SSE (/sse). Tool logic is shared
  * via registerAllTools; the only difference is the cache backend (Workers KV).
  */
@@ -23,6 +25,9 @@ export class NusModsMcp extends McpAgent<Env> {
 
 	async init(): Promise<void> {
 		setCache(new KvCacheStore(this.env.NUSMODS_CACHE))
+		if (this.env.DISQUS_API_KEY) {
+			setDisqusApiKey(this.env.DISQUS_API_KEY)
+		}
 		registerAllTools(this.server)
 	}
 }
