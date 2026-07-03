@@ -6,7 +6,6 @@ const USER_AGENT = "nusmods-mcp/0.1 (local MCP server)";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PAGE_LIMIT = 100;
 const HARD_CAP = 200;
-const DEFAULT_MAX_POSTS = 50;
 
 let apiKey: string | undefined;
 
@@ -70,8 +69,9 @@ function stripHtml(html: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'")
     .replace(/&nbsp;/g, " ")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)))
     .trim();
 }
 
@@ -94,15 +94,13 @@ async function fetchPage(moduleCode: string, key: string, cursor?: string): Prom
 
 /**
  * Fetch and normalize reviews (Disqus comments) for a module's NUSMods
- * reviews thread. Paginates via cursor until `maxPosts` (capped at
- * {@link HARD_CAP}) is reached or the thread is exhausted. Results are cached
- * per module code for 24h. Returns a soft-fail object on any Disqus API error
- * (invalid key, unknown thread, etc.) instead of throwing.
+ * reviews thread. Paginates via cursor until the thread is exhausted or
+ * {@link HARD_CAP} posts are fetched, so the returned length is the thread's
+ * review count for threads under the cap. Results are cached per module code
+ * for 24h. Returns a soft-fail object on any Disqus API error (invalid key,
+ * unknown thread, etc.) instead of throwing.
  */
-export async function fetchModuleReviews(
-  moduleCode: string,
-  maxPosts = DEFAULT_MAX_POSTS,
-): Promise<ModuleReview[] | DisqusSoftFail> {
+export async function fetchModuleReviews(moduleCode: string): Promise<ModuleReview[] | DisqusSoftFail> {
   const key = getDisqusApiKey();
   if (!key) {
     return {
@@ -112,7 +110,6 @@ export async function fetchModuleReviews(
     };
   }
 
-  const cappedMax = Math.min(Math.max(1, maxPosts), HARD_CAP);
   const cacheKey = `disqusReviews:${moduleCode.toUpperCase()}`;
 
   const result = await cached(cacheKey, DAY_MS, async () => {
@@ -146,7 +143,8 @@ export async function fetchModuleReviews(
     const reviews: ModuleReview[] = posts
       .filter((post) => !post.isDeleted)
       .map((post) => {
-        const text = post.raw_message && post.raw_message.length > 0 ? post.raw_message : stripHtml(post.message ?? "");
+        // raw_message can still contain HTML tags and entities, so always strip.
+        const text = stripHtml(post.raw_message || post.message || "");
         const parentId = post.parent != null ? String(post.parent) : undefined;
         const replyTo = parentId ? authorById.get(parentId) : undefined;
         return {
@@ -162,9 +160,5 @@ export async function fetchModuleReviews(
     return reviews;
   });
 
-  if (isDisqusSoftFail(result)) {
-    return result;
-  }
-
-  return result.slice(0, cappedMax);
+  return result;
 }

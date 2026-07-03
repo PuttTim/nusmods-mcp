@@ -29,7 +29,7 @@ export function registerGetModuleReviews(server: McpServer): void {
     },
     async ({ moduleCode, limit }) => {
       const cappedLimit = Math.min(limit ?? DEFAULT_LIMIT, MAX_LIMIT);
-      const result = await fetchModuleReviews(moduleCode.toUpperCase(), cappedLimit);
+      const result = await fetchModuleReviews(moduleCode.toUpperCase());
 
       if (isDisqusSoftFail(result)) {
         return { content: [{ type: "text", text: JSON.stringify(result) }] };
