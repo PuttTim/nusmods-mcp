@@ -1,5 +1,7 @@
 # nusmods-mcp
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/PuttTim/nusmods-mcp)
+
 A local MCP (Model Context Protocol) server for querying [NUSMods](https://nusmods.com) module and timetable data agentically from AI tools (Claude Code, Claude Desktop, Cursor, …).
 
 The server is **strictly data-only**: it fetches, decodes, and compacts data from the NUSMods v2 API and faculty schedule pages. Timetable construction, optimization, and clash avoidance are done by the AI agent using this data. See [PRD.md](./PRD.md) for the full design.
@@ -64,6 +66,14 @@ Without a key configured, the tool returns a structured error explaining how
 to set one up instead of failing silently.
 
 ## Deploy to Cloudflare (remote server)
+
+The fastest path is the **Deploy to Cloudflare** button at the top of this
+README: it clones the repo into your GitHub account, auto-provisions the KV
+namespace and Durable Object, and deploys. Afterwards, set the Disqus key on
+the new Worker: `npx wrangler secret put DISQUS_API_KEY` (or via the
+dashboard). Note the button only works while the repository is public.
+
+Manual deployment from a clone:
 
 The same 8 tools can also run as an authless remote MCP server on Cloudflare
 Workers (streamable HTTP at `/mcp`, SSE at `/sse`). The Worker entry is
