@@ -158,7 +158,7 @@ export async function fetchModuleReviews(moduleCode: string): Promise<ModuleRevi
       });
 
     return reviews;
-  });
+  }, (value) => !isDisqusSoftFail(value));
 
   return result;
 }

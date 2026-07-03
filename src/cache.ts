@@ -94,12 +94,26 @@ export function setCache(cache: KvCache): void {
   activeCache = cache;
 }
 
-export async function cached<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+/**
+ * Read-through cache. When `isCacheable` is given, values failing the
+ * predicate (e.g. soft-fail error objects) are never written, and a stale
+ * cached value failing it is treated as a miss — so transient errors like an
+ * invalid API key are retried on the next request instead of being served
+ * for the full TTL.
+ */
+export async function cached<T>(
+  key: string,
+  ttlMs: number,
+  fetcher: () => Promise<T>,
+  isCacheable?: (value: T) => boolean,
+): Promise<T> {
   const existing = await activeCache.get<T>(key);
-  if (existing !== undefined) {
+  if (existing !== undefined && (isCacheable === undefined || isCacheable(existing))) {
     return existing;
   }
   const value = await fetcher();
-  await activeCache.set(key, value, ttlMs);
+  if (isCacheable === undefined || isCacheable(value)) {
+    await activeCache.set(key, value, ttlMs);
+  }
   return value;
 }
