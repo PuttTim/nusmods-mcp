@@ -55,7 +55,7 @@ npx wrangler login                       # one-time auth
 
 # Create the KV namespace and paste the printed id into wrangler.jsonc,
 # replacing REPLACE_WITH_KV_NAMESPACE_ID:
-npx wrangler kv namespace create CACHE
+npx wrangler kv namespace create NUSMODS_CACHE
 
 npm run deploy                           # wrangler deploy
 ```
@@ -82,7 +82,7 @@ No config required. Optional:
 - `NUSMODS_ACAD_YEAR` — override the auto-derived academic year (format `2025-2026`).
 - Academic year/semester default from the current date (Jul 1–Dec 15 → Sem 1; Dec 16–May 15 → Sem 2; mid-May–June requires an explicit `semester`). All tools accept explicit `acadYear`/`semester` params.
 
-API responses are cached on disk under `~/.cache/nusmods-mcp` (24h TTL; scraped pages 6h). The Cloudflare Worker uses the same TTLs backed by a Workers KV namespace (`CACHE`) instead of disk.
+API responses are cached on disk under `~/.cache/nusmods-mcp` (24h TTL; scraped pages 6h). The Cloudflare Worker uses the same TTLs backed by a Workers KV namespace (`NUSMODS_CACHE`) instead of disk.
 
 ## Development
 
