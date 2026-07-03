@@ -7,13 +7,34 @@
 //   node scripts/remote.mjs get_module_info '{"moduleCode":"CS2103T"}'
 //   pnpm remote get_module_reviews '{"moduleCode":"DTK1234"}'
 //
-// Override the server with NUSMODS_MCP_URL if needed.
+// The server URL comes from NUSMODS_MCP_URL (set it in .env or the shell).
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-const URL_DEFAULT = "https://your-host.example.com/mcp";
-const url = process.env.NUSMODS_MCP_URL ?? URL_DEFAULT;
+function readEnvFile(name) {
+  try {
+    const raw = readFileSync(resolve(fileURLToPath(import.meta.url), "../../.env"), "utf8");
+    for (const line of raw.split("\n")) {
+      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
+      if (match && match[1] === name && !line.trimStart().startsWith("#")) {
+        return match[2].replace(/^(["'])(.*)\1$/, "$2") || undefined;
+      }
+    }
+  } catch {
+    /* no .env */
+  }
+  return undefined;
+}
+
+const url = process.env.NUSMODS_MCP_URL ?? readEnvFile("NUSMODS_MCP_URL");
+if (!url) {
+  console.error("Set NUSMODS_MCP_URL (env var or .env) to your deployed MCP endpoint, e.g. https://<host>/mcp");
+  process.exit(1);
+}
 
 const [toolName, argsJson] = process.argv.slice(2);
 

@@ -1,10 +1,14 @@
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const serverEntry = resolve(fileURLToPath(import.meta.url), "../../dist/index.js");
 
 const client = new Client({ name: "smoke", version: "0.0.0" });
 await client.connect(new StdioClientTransport({
   command: "node",
-  args: ["./dist/index.js"],
+  args: [serverEntry],
 }));
 
 const tools = (await client.listTools()).tools.map(t => t.name);
