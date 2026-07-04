@@ -2,7 +2,10 @@ import { cached } from "./cache.js";
 
 const USER_AGENT = "nusmods-mcp/0.1 (local MCP server)";
 const API_BASE = "https://api.nusmods.com/v2";
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+const MODULE_TTL_MS = 72 * HOUR_MS;
+const MODULE_REFRESH_MS = 24 * HOUR_MS;
 
 export interface ModuleListEntry {
   moduleCode: string;
@@ -66,8 +69,11 @@ export async function getModuleList(acadYear: string): Promise<ModuleListEntry[]
 export async function getModuleInfo(acadYear: string, moduleCode: string): Promise<ModuleInfo | undefined> {
   const key = `module:${acadYear}:${moduleCode.toUpperCase()}`;
   try {
-    return await cached(key, DAY_MS, () =>
-      fetchJson<ModuleInfo>(`${API_BASE}/${acadYear}/modules/${moduleCode.toUpperCase()}.json`),
+    return await cached(
+      key,
+      MODULE_TTL_MS,
+      () => fetchJson<ModuleInfo>(`${API_BASE}/${acadYear}/modules/${moduleCode.toUpperCase()}.json`),
+      { refreshAfterMs: MODULE_REFRESH_MS },
     );
   } catch {
     return undefined;

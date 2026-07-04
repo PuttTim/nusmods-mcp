@@ -6,15 +6,23 @@ import { join } from "node:path";
 /**
  * Minimal key/value cache abstraction shared by both entrypoints. TTL is
  * supplied at write time (KV stores are natively TTL-based) so `get` needs no
- * TTL argument. The stdio entry uses {@link DiskCache}; the Cloudflare Worker
- * uses {@link KvCache} backed by a Workers KV namespace.
+ * TTL argument. Entries carry their write timestamp so `cached` can refresh
+ * values that are past a soft-freshness threshold before the hard TTL. The
+ * stdio entry uses {@link DiskCache}; the Cloudflare Worker uses
+ * {@link KvCacheStore} backed by a Workers KV namespace.
  */
 export interface KvCache {
-  get<T>(key: string): Promise<T | undefined>;
+  get<T>(key: string): Promise<CacheEntry<T> | undefined>;
   set<T>(key: string, value: T, ttlMs: number): Promise<void>;
 }
 
+export interface CacheEntry<T> {
+  storedAt: number;
+  value: T;
+}
+
 interface CacheEnvelope<T> {
+  storedAt: number;
   expiresAt: number;
   value: T;
 }
@@ -38,7 +46,7 @@ export class DiskCache implements KvCache {
     return dir;
   }
 
-  async get<T>(key: string): Promise<T | undefined> {
+  async get<T>(key: string): Promise<CacheEntry<T> | undefined> {
     const dir = await this.ensureDir();
     const filePath = join(dir, keyToFilename(key));
     try {
@@ -47,7 +55,8 @@ export class DiskCache implements KvCache {
       if (Date.now() > envelope.expiresAt) {
         return undefined;
       }
-      return envelope.value;
+      // Entries written before storedAt existed are treated as freshly stale.
+      return { storedAt: envelope.storedAt ?? 0, value: envelope.value };
     } catch {
       return undefined;
     }
@@ -56,7 +65,8 @@ export class DiskCache implements KvCache {
   async set<T>(key: string, value: T, ttlMs: number): Promise<void> {
     const dir = await this.ensureDir();
     const filePath = join(dir, keyToFilename(key));
-    const envelope: CacheEnvelope<T> = { expiresAt: Date.now() + ttlMs, value };
+    const now = Date.now();
+    const envelope: CacheEnvelope<T> = { storedAt: now, expiresAt: now + ttlMs, value };
     await writeFile(filePath, JSON.stringify(envelope), "utf8");
   }
 }
@@ -71,19 +81,31 @@ export interface KvNamespaceLike {
   put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
 }
 
-/** Cloudflare Workers KV-backed cache. KV enforces TTL natively. */
+/**
+ * Cloudflare Workers KV-backed cache. KV enforces the hard TTL natively;
+ * values are wrapped in an envelope carrying `storedAt` for soft-freshness
+ * checks. Pre-envelope entries (raw values) are surfaced with `storedAt: 0`
+ * so they refresh on next access.
+ */
 export class KvCacheStore implements KvCache {
   constructor(private readonly kv: KvNamespaceLike) {}
 
-  async get<T>(key: string): Promise<T | undefined> {
-    const value = (await this.kv.get(key, "json")) as T | null;
-    return value ?? undefined;
+  async get<T>(key: string): Promise<CacheEntry<T> | undefined> {
+    const raw = await this.kv.get(key, "json");
+    if (raw === null || raw === undefined) {
+      return undefined;
+    }
+    if (typeof raw === "object" && raw !== null && "storedAt" in raw && "value" in raw) {
+      const envelope = raw as { storedAt: number; value: T };
+      return { storedAt: envelope.storedAt, value: envelope.value };
+    }
+    return { storedAt: 0, value: raw as T };
   }
 
   async set<T>(key: string, value: T, ttlMs: number): Promise<void> {
     // KV requires expirationTtl >= 60 seconds.
     const expirationTtl = Math.max(60, Math.round(ttlMs / 1000));
-    await this.kv.put(key, JSON.stringify(value), { expirationTtl });
+    await this.kv.put(key, JSON.stringify({ storedAt: Date.now(), value }), { expirationTtl });
   }
 }
 
@@ -94,24 +116,49 @@ export function setCache(cache: KvCache): void {
   activeCache = cache;
 }
 
-/**
- * Read-through cache. When `isCacheable` is given, values failing the
- * predicate (e.g. soft-fail error objects) are never written, and a stale
- * cached value failing it is treated as a miss — so transient errors like an
- * invalid API key are retried on the next request instead of being served
- * for the full TTL.
- */
+export interface CachedOptions<T> {
+  /**
+   * Values failing this predicate (e.g. soft-fail error objects) are never
+   * written, and a cached value failing it is treated as a miss — so
+   * transient errors like an invalid API key are retried on the next request
+   * instead of being served for the full TTL.
+   */
+  isCacheable?: (value: T) => boolean;
+  /**
+   * Soft freshness threshold: an entry older than this is re-fetched on
+   * access (rehydrated) even though it hasn't hit the hard TTL. If the
+   * re-fetch fails, the stale entry is served instead.
+   */
+  refreshAfterMs?: number;
+}
+
+/** Read-through cache with optional refresh-on-access. See {@link CachedOptions}. */
 export async function cached<T>(
   key: string,
   ttlMs: number,
   fetcher: () => Promise<T>,
-  isCacheable?: (value: T) => boolean,
+  options: CachedOptions<T> = {},
 ): Promise<T> {
-  const existing = await activeCache.get<T>(key);
-  if (existing !== undefined && (isCacheable === undefined || isCacheable(existing))) {
-    return existing;
+  const { isCacheable, refreshAfterMs } = options;
+  const entry = await activeCache.get<T>(key);
+  const usable = entry !== undefined && (isCacheable === undefined || isCacheable(entry.value));
+  if (usable) {
+    const fresh = refreshAfterMs === undefined || Date.now() - entry.storedAt < refreshAfterMs;
+    if (fresh) {
+      return entry.value;
+    }
   }
-  const value = await fetcher();
+
+  let value: T;
+  try {
+    value = await fetcher();
+  } catch (error) {
+    if (usable) {
+      // Rehydration failed; serve the stale-but-valid entry.
+      return entry.value;
+    }
+    throw error;
+  }
   if (isCacheable === undefined || isCacheable(value)) {
     await activeCache.set(key, value, ttlMs);
   }

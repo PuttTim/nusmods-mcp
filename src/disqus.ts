@@ -3,7 +3,7 @@ import { cached } from "./cache.js";
 const API_BASE = "https://disqus.com/api/3.0";
 const FORUM = "nusmods-prod";
 const USER_AGENT = "nusmods-mcp/0.1 (local MCP server)";
-const DAY_MS = 24 * 60 * 60 * 1000;
+const REVIEWS_TTL_MS = 168 * 60 * 60 * 1000;
 const PAGE_LIMIT = 100;
 const HARD_CAP = 200;
 
@@ -97,7 +97,7 @@ async function fetchPage(moduleCode: string, key: string, cursor?: string): Prom
  * reviews thread. Paginates via cursor until the thread is exhausted or
  * {@link HARD_CAP} posts are fetched, so the returned length is the thread's
  * review count for threads under the cap. Results are cached per module code
- * for 24h. Returns a soft-fail object on any Disqus API error (invalid key,
+ * for 168h. Returns a soft-fail object on any Disqus API error (invalid key,
  * unknown thread, etc.) instead of throwing.
  */
 export async function fetchModuleReviews(moduleCode: string): Promise<ModuleReview[] | DisqusSoftFail> {
@@ -112,7 +112,7 @@ export async function fetchModuleReviews(moduleCode: string): Promise<ModuleRevi
 
   const cacheKey = `disqusReviews:${moduleCode.toUpperCase()}`;
 
-  const result = await cached(cacheKey, DAY_MS, async () => {
+  const result = await cached(cacheKey, REVIEWS_TTL_MS, async () => {
     const posts: DisqusPost[] = [];
     let cursor: string | undefined;
     let softFail: DisqusSoftFail | undefined;
@@ -158,7 +158,7 @@ export async function fetchModuleReviews(moduleCode: string): Promise<ModuleRevi
       });
 
     return reviews;
-  }, (value) => !isDisqusSoftFail(value));
+  }, { isCacheable: (value) => !isDisqusSoftFail(value) });
 
   return result;
 }
