@@ -2,9 +2,9 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/PuttTim/nusmods-mcp)
 
-A local MCP (Model Context Protocol) server for querying [NUSMods](https://nusmods.com) module and timetable data agentically from AI tools (Claude Code, Claude Desktop, Cursor, …).
+A local MCP (Model Context Protocol) server for querying [NUSMods](https://nusmods.com) module and timetable data agentically from AI tools 
 
-The server is **strictly data-only**: it fetches, decodes, and compacts data from the NUSMods v2 API and faculty schedule pages. Timetable construction, optimization, and clash avoidance are done by the AI agent using this data. See [PRD.md](./PRD.md) for the full design.
+The server is **strictly data-only**: it fetches, decodes, and compacts data from the NUSMods v2 API and faculty schedule pages. Timetable construction, optimization, and clash avoidance are done by your own AI agent using this data.
 
 ## Tools
 
