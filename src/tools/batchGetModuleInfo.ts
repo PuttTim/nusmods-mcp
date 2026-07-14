@@ -33,7 +33,8 @@ export function registerBatchGetModuleInfo(server: McpServer): void {
     {
       title: "Batch get module info",
       description:
-        "Get trimmed details for multiple modules in one call. Returns an array of results in the same format as get_module_info (including socSchedule for SoC modules, scraped from the SoC teaching schedule page for the AY it currently publishes). Modules not found are returned with an error field.",
+        "Get trimmed details for multiple modules in one call. Returns an array of results in the same format as get_module_info (including socSchedule for SoC modules, scraped from the SoC teaching schedule page for the AY it currently publishes). Modules not found are returned with an error field. " +
+        "A module is offered in semester X only if its semesters array contains an entry with semester: X — entries with a warning field instead of semesters have no NUSMods offering data for that AY and must never be listed as available; check every entry's semesters field individually before filtering by semester.",
       inputSchema: {
         moduleCodes: z.array(z.string().min(1)).min(1).describe("Array of module codes, e.g. [\"CS2103T\", \"MA1521\"]"),
         acadYear: z.string().optional().describe('Academic year, e.g. "2025-2026". Defaults to current/upcoming AY.'),
@@ -72,6 +73,10 @@ export function registerBatchGetModuleInfo(server: McpServer): void {
             corequisite: info.corequisite,
             workload: info.workload,
             semesters: semesters.length > 0 ? semesters : undefined,
+            warning:
+              semesters.length === 0
+                ? `NUSMods has no semester data for ${info.moduleCode} in AY ${resolvedAcadYear} — not confirmed to run in any semester; treat as NOT offered this AY unless socSchedule shows an offering`
+                : undefined,
             socSchedule,
           });
         }),

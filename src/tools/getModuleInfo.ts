@@ -34,6 +34,7 @@ export function registerGetModuleInfo(server: McpServer): void {
       title: "Get module info",
       description:
         "Get trimmed details for a single module: title, department, faculty, credits, description, prerequisite/preclusion/corequisite, workload, and semesters offered with exam date/duration. " +
+        "A module is offered in semester X only if the semesters array contains an entry with semester: X — if semesters is absent, NUSMods has no offering data for that AY and a warning field is returned; never treat such a module as available. " +
         "For SoC modules, also returns socSchedule with per-semester availability and instructors scraped from the SoC teaching schedule page. " +
         "socSchedule reflects the AY the SoC page currently publishes (usually the upcoming AY) and is typically more accurate than NUSMods for instructors and sem 1/2 availability.",
       inputSchema: {
@@ -78,6 +79,10 @@ export function registerGetModuleInfo(server: McpServer): void {
         corequisite: info.corequisite,
         workload: info.workload,
         semesters: semesters.length > 0 ? semesters : undefined,
+        warning:
+          semesters.length === 0
+            ? `NUSMods has no semester data for ${info.moduleCode} in AY ${resolvedAcadYear} — not confirmed to run in any semester; treat as NOT offered this AY unless socSchedule shows an offering`
+            : undefined,
         socSchedule,
       });
 

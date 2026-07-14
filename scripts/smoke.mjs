@@ -18,6 +18,8 @@ const calls = [
   ["search_modules", { query: "linear algebra", acadYear: "2025-2026" }],
   ["get_module_info", { moduleCode: "MA2104", acadYear: "2025-2026" }],
   ["get_module_info", { moduleCode: "CS2103T", acadYear: "2025-2026" }],
+  // IS3221 has semesterData: [] in 2026-2027 — must return a warning, not silent omission.
+  ["batch_get_module_info", { moduleCodes: ["CS2103T", "IS3221"], acadYear: "2026-2027" }],
   ["get_module_timetable", { moduleCode: "MA2104", semester: 1, acadYear: "2025-2026" }],
   ["list_academic_calendar", { acadYear: "2025-2026" }],
   ["decode_share_url", { url: "https://nusmods.com/timetable/sem-1/share?CS2103T=LEC:G12&CS2101=", acadYear: "2025-2026" }],
