@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getModuleInfo } from "../api.js";
 import { resolveAcadYear } from "../config.js";
+import { getSocOffering } from "../scrapers/soc.js";
 
 const DESCRIPTION_MAX_LENGTH = 600;
 
@@ -32,7 +33,7 @@ export function registerBatchGetModuleInfo(server: McpServer): void {
     {
       title: "Batch get module info",
       description:
-        "Get trimmed details for multiple modules in one call. Returns an array of results in the same format as get_module_info. Modules not found are returned with an error field.",
+        "Get trimmed details for multiple modules in one call. Returns an array of results in the same format as get_module_info (including socSchedule for SoC modules, scraped from the SoC teaching schedule page for the AY it currently publishes). Modules not found are returned with an error field.",
       inputSchema: {
         moduleCodes: z.array(z.string().min(1)).min(1).describe("Array of module codes, e.g. [\"CS2103T\", \"MA1521\"]"),
         acadYear: z.string().optional().describe('Academic year, e.g. "2025-2026". Defaults to current/upcoming AY.'),
@@ -48,6 +49,8 @@ export function registerBatchGetModuleInfo(server: McpServer): void {
           if (!info) {
             return { error: `Module ${moduleCode.toUpperCase()} not found for AY ${resolvedAcadYear}` };
           }
+
+          const socSchedule = await getSocOffering(info.moduleCode);
 
           const semesters = info.semesterData.map((sem) =>
             omitEmpty({
@@ -69,6 +72,7 @@ export function registerBatchGetModuleInfo(server: McpServer): void {
             corequisite: info.corequisite,
             workload: info.workload,
             semesters: semesters.length > 0 ? semesters : undefined,
+            socSchedule,
           });
         }),
       );

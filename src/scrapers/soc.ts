@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { cached } from "../cache.js";
+import { isSoftFail } from "./types.js";
 import type {
   FacultyScheduleEntry,
   FacultyScheduleResult,
@@ -11,7 +12,10 @@ import type {
 const SOC_URL = "https://www.comp.nus.edu.sg/cug/soc-sched/";
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+// Refresh from the SoC page every 24h, but keep the last good copy for 72h
+// so a transient fetch failure serves stale data instead of an error.
+const CACHE_TTL_MS = 72 * 60 * 60 * 1000;
+const CACHE_REFRESH_MS = 24 * 60 * 60 * 1000;
 const CACHE_KEY = "faculty-schedule:soc:v4";
 
 const DAY_RE = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{2}:\d{2})-(\d{2}:\d{2})\s*(.*)$/;
@@ -159,18 +163,87 @@ export class SocScheduleSource implements FacultyScheduleSource {
   readonly url = SOC_URL;
 
   async fetchSchedule(): Promise<FacultyScheduleResult> {
-    return cached(CACHE_KEY, CACHE_TTL_MS, async () => {
-      try {
-        const html = await fetchHtml();
-        return parseSocHtml(html);
-      } catch (error) {
-        return {
-          error: error instanceof Error ? error.message : "Failed to fetch or parse SoC schedule",
-          faculty: this.faculty,
-          url: this.url,
-          hint: "page fetch/parse failed; try fetching the page directly or ask the user to check it in a browser",
-        };
-      }
+    return cached(
+      CACHE_KEY,
+      CACHE_TTL_MS,
+      async () => {
+        try {
+          const html = await fetchHtml();
+          return parseSocHtml(html);
+        } catch (error) {
+          return {
+            error: error instanceof Error ? error.message : "Failed to fetch or parse SoC schedule",
+            faculty: this.faculty,
+            url: this.url,
+            hint: "page fetch/parse failed; try fetching the page directly or ask the user to check it in a browser",
+          };
+        }
+      },
+      {
+        // Soft-fails are never cached, so an outage is retried on the next
+        // request rather than served for the full TTL.
+        isCacheable: (value) => !isSoftFail(value),
+        refreshAfterMs: CACHE_REFRESH_MS,
+      },
+    );
+  }
+}
+
+/**
+ * Per-semester offering details for one module, scraped from the SoC teaching
+ * schedule page. Used to enrich module-info tools: the SoC page reflects the
+ * upcoming AY's instructors and sem 1/2 availability earlier (and usually more
+ * accurately) than NUSMods.
+ */
+export interface SocOffering {
+  source: string;
+  semesters: Array<{ semester: 1 | 2; instructors?: string[]; examDate?: string }>;
+}
+
+const sharedSocSource = new SocScheduleSource();
+
+// Dedupe concurrent lookups (e.g. batch_get_module_info fans out in parallel)
+// so a cold cache triggers a single page fetch, not one per module.
+let inflightSchedule: Promise<FacultyScheduleResult> | undefined;
+
+function fetchSharedSchedule(): Promise<FacultyScheduleResult> {
+  if (inflightSchedule === undefined) {
+    inflightSchedule = sharedSocSource.fetchSchedule().finally(() => {
+      inflightSchedule = undefined;
     });
   }
+  return inflightSchedule;
+}
+
+/** Best-effort lookup of a module on the SoC schedule page; undefined on any failure or miss. */
+export async function getSocOffering(moduleCode: string): Promise<SocOffering | undefined> {
+  let result: FacultyScheduleResult;
+  try {
+    result = await fetchSharedSchedule();
+  } catch {
+    return undefined;
+  }
+  if (isSoftFail(result)) {
+    return undefined;
+  }
+  const code = moduleCode.toUpperCase();
+  const matches = result.filter((entry) => entry.moduleCode.toUpperCase() === code);
+  if (matches.length === 0) {
+    return undefined;
+  }
+  return {
+    source: SOC_URL,
+    semesters: matches
+      .filter((entry): entry is FacultyScheduleEntry & { semester: 1 | 2 } => entry.semester !== undefined)
+      .map((entry) => {
+        const sem: SocOffering["semesters"][number] = { semester: entry.semester };
+        if (entry.instructors && entry.instructors.length > 0) {
+          sem.instructors = entry.instructors;
+        }
+        if (entry.examDate !== undefined) {
+          sem.examDate = entry.examDate;
+        }
+        return sem;
+      }),
+  };
 }

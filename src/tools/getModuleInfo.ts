@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getModuleInfo } from "../api.js";
 import { resolveAcadYear } from "../config.js";
+import { getSocOffering } from "../scrapers/soc.js";
 
 const DESCRIPTION_MAX_LENGTH = 600;
 
@@ -32,7 +33,9 @@ export function registerGetModuleInfo(server: McpServer): void {
     {
       title: "Get module info",
       description:
-        "Get trimmed details for a single module: title, department, faculty, credits, description, prerequisite/preclusion/corequisite, workload, and semesters offered with exam date/duration.",
+        "Get trimmed details for a single module: title, department, faculty, credits, description, prerequisite/preclusion/corequisite, workload, and semesters offered with exam date/duration. " +
+        "For SoC modules, also returns socSchedule with per-semester availability and instructors scraped from the SoC teaching schedule page. " +
+        "socSchedule reflects the AY the SoC page currently publishes (usually the upcoming AY) and is typically more accurate than NUSMods for instructors and sem 1/2 availability.",
       inputSchema: {
         moduleCode: z.string().min(1).describe("Module code, e.g. CS2103T"),
         acadYear: z.string().optional().describe('Academic year, e.g. "2025-2026". Defaults to current/upcoming AY.'),
@@ -52,6 +55,8 @@ export function registerGetModuleInfo(server: McpServer): void {
           ],
         };
       }
+
+      const socSchedule = await getSocOffering(info.moduleCode);
 
       const semesters = info.semesterData.map((sem) =>
         omitEmpty({
@@ -73,6 +78,7 @@ export function registerGetModuleInfo(server: McpServer): void {
         corequisite: info.corequisite,
         workload: info.workload,
         semesters: semesters.length > 0 ? semesters : undefined,
+        socSchedule,
       });
 
       return {

@@ -11,7 +11,7 @@ The server is **strictly data-only**: it fetches, decodes, and compacts data fro
 | Tool | Purpose |
 |---|---|
 | `search_modules` | Search modules by code/title, with level filter |
-| `get_module_info` | Module details: description, credits, prereqs, workload, exam info |
+| `get_module_info` | Module details: description, credits, prereqs, workload, exam info; SoC modules also include per-semester instructors and availability scraped from the SoC schedule page |
 | `get_module_timetable` | Condensed lesson slots for a module in a semester |
 | `decode_share_url` | Decode a NUSMods share URL (incl. short links) into concrete lessons |
 | `encode_share_url` | Build a canonical NUSMods share URL from selected lessons |
